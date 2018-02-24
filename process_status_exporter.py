@@ -88,9 +88,7 @@ def get_process_name():
     try:
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'process_info.txt')) as file:
             for process_name in file:
-                if process_name.startswith('#'):
-                    continue
-                elif process_name.strip() == '':
+                if process_name.startswith('#') or process_name.strip() == '':
                     continue
                 else:
                     yield process_name.rstrip()
@@ -198,53 +196,6 @@ def _parse_stat_file(pid):
     others = data[rpar + 2:].split()
     return [name] + others
 
-
-# def process_running_time(process_name):
-#     '''
-#     return a dict contains pid and process running time 
-#     '''
-#     etime_total = {}
-#     if "nginx" in process_name:
-#         output = Popen(['ps -C nginx -o pid,cmd | grep "master" | grep nginx.conf | grep -v exporter'],
-#                        stdout=PIPE,
-#                        shell=True)
-#     else:
-#         output = Popen(['ps aux | grep -i "' + process_name + '" | grep -v exporter | grep -v grep'],
-#                        stdout=PIPE,
-#                        shell=True)
-#     # close_fds=True)
-#     etime_list = output.stdout.readlines()
-
-#     for time in etime_list:
-#         rtime = time.rstrip('\n').split()[0]
-#         pid = time.rstrip('\n').split()[1]
-#         if "-" in rtime:
-#             pass
-#         else:
-#             list = rtime.split(':')
-#             if len(list) == 2:
-#                 rtime = '0-0:' + rtime
-#             elif len(list) == 3:
-#                 rtime = '0-' + rtime
-#             else:
-#                 print "time error, not aa:bb or aa:bb:cc"
-#                 pass
-#         time_list = re.split('[-:]', rtime)
-#         # print "rtime= %s" % rtime
-#         # print "time_list= %s " % time_list
-
-#         days = (int)(time_list[0])
-#         hours = (int)(time_list[1])
-#         mins = (int)(time_list[2])
-#         secs = (int)(time_list[3])
-
-#         time_sum = days * 24 * 3600 + hours * 3600 + mins * 60 + secs
-#         etime_total.setdefault(pid, float(time_sum))
-
-#     print 'etime_total = %s' % (etime_total)
-#     return etime_total
-
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description='process status exporter args, including address and port'
@@ -291,5 +242,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # get_process_metrics(30660)
     
