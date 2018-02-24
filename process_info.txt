@@ -1,0 +1,54 @@
+# process_info.txt
+# list process name to monitor
+# PID can be found in /run/ or /var/run/ directory if the program got an pid file
+# Otherwise, PID can be found in "/sys/fs/cgroup/systemd/system.slice/SERVICE_NAME.service/cgroup.procs" 
+# if the program was setup by systemdctl
+
+# /run/ambari-server/ambari-server.pid
+# /sys/fs/cgroup/systemd/system.slice/ambari-server.service/cgroup.procs
+ambari-server
+
+# /run/ambari-agent/ambari-server.pid
+# /sys/fs/cgroup/systemd/system.slice/ambari-agent.service/cgroup.procs
+ambari-agent
+
+# /run/knox/gateway.pid
+# install inside the cluster as an service gateway
+knox-server
+
+# install outside the cluster as ambari SSO
+# /sys/fs/cgroup/systemd/system.slice/knox.service/cgroup.procs
+knox
+
+# /sys/fs/cgroup/systemd/system.slice/keycloak.service/cgroup.procs
+keycloak
+
+# /sys/fs/cgroup/systemd/system.slice/tomcat-master.service/cgroup.procs
+tomcat-master
+
+# /sys/fs/cgroup/systemd/system.slice/tomcat-tenant.service/cgroup.procs
+tomcat-tenant
+
+# /run/nginx.pid
+# /sys/fs/cgroup/systemd/system.slice/nginx.service/cgroup.procs
+# serveral PIDs written in the cgroup.procs, should pick only the master PID.
+nginx
+
+# /run/consul.pid
+# /sys/fs/cgroup/systemd/system.slice/consul.service/cgroup.procs
+consul
+
+# /run/mysqld/mysqld.pid
+# /sys/fs/cgroup/systemd/system.slice/mysqld.service/cgroup.procs
+mysqld
+
+# /run/openldap/slapd.pid
+# /sys/fs/cgroup/systemd/system.slice/slapd.service/cgroup.procs
+slapd
+
+# /sys/fs/cgroup/systemd/system.slice/prometheus.service
+prometheus
+
+# /run/grafana/grafana-server.pid
+# /sys/fs/cgroup/systemd/system.slice/grafana-server.service/cgroup.procs
+grafana-server
