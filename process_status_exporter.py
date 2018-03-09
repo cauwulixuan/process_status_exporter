@@ -16,7 +16,7 @@ from prometheus_client.core import GaugeMetricFamily, REGISTRY
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S')
-import sys
+
 logger = logging.getLogger(sys.path[0] + 'process_status_exporter')
 
 class ProcessStatusCollector(object):
@@ -31,14 +31,14 @@ class ProcessStatusCollector(object):
             print 'process_name = %s ' % (process_name)
             pid = get_pid(process_name)
             print 'PID = %s ' % (pid)
-            snake_case = re.sub('[-|\s]', r'_', process_name).lower()
+            snake_case = re.sub('[-|\s]', r'_', process_name).lower()            
 
             yield GaugeMetricFamily(snake_case + '_process_up',
-                                    snake_case + ' Process Up or Down (1 for up, 0 for down).',
-                                    value = process_state(pid))
+                                        snake_case + ' Process Up or Down (1 for up, 0 for down).',
+                                        value = process_state(pid))
 
             process_metrics = get_process_metrics(pid, process_name)
-            if process_metrics:
+            if process_metrics:                
                 yield GaugeMetricFamily(snake_case + '_running_time_seconds_total',
                                         snake_case + ' Total Running time in seconds.',
                                         value = process_metrics['create_time'])
@@ -96,7 +96,6 @@ def get_process_name():
         logging.error("open files error, please check!")
         pass
 
-
 def get_pid(process_name):
     '''
     This function is able to get PID by a given process name. Usually PID can be found in a .pid file 
@@ -111,25 +110,45 @@ def get_pid(process_name):
         logging.info("/run/{0}/{0}.pid file exist, read PID.".format(process_name))
         with open("/run/{0}/{0}.pid".format(process_name), "r") as f:
             data = f.readline().rstrip()
-            return data
+            if data:
+                return data
+            else:
+                return None
     elif os.path.exists(r'/run/{0}.pid'.format(process_name)):
         logging.info("/run/{0}/{0}.pid file not exist, /run/{0}.pid file exist, read PID.".format(process_name))
         with open("/run/{0}.pid".format(process_name), "r") as f:
             data = f.readline().rstrip()
-            return data
+            if data:
+                return data
+            else:
+                return None
     elif os.path.exists(r'/sys/fs/cgroup/systemd/system.slice/{0}.service/cgroup.procs'.format(process_name)):
         logging.info("no pid file in /run/ directory. .../{0}.service/cgroup.procs file exist, read PID.".format(process_name))
         with open("/sys/fs/cgroup/systemd/system.slice/{0}.service/cgroup.procs".format(process_name), "r") as f:
             data = f.readline().rstrip()
-            return data
-    elif "knox-server" in process_name:
+            if data:
+                return data
+            else:
+                return None
+    elif "grafana-server" in process_name and os.path.exists(r'/run/grafana/grafana-server.pid'):
+        logging.info("/run/grafana/grafana-server.pid file exist, read PID.")
+        with open("/run/grafana/grafana-server.pid", "r") as f:
+            data = f.readline().rstrip()
+            if data:
+                return data
+            else:
+                return None
+    elif "knox-server" in process_name and os.path.exists(r'/run/knox/gateway.pid'):
         logging.info("/run/knox/gateway.pid file exist, read PID.")
         with open("/run/knox/gateway.pid", "r") as f:
             data = f.readline().rstrip()
-            return data
+            if data:
+                return data
+            else:
+                return None
     else:
         logging.error("Cann't find {0} PID file, error happened, please check why PID file not exist.".format(process_name))
-        sys.exit(1)
+        return None
 
 def get_process_metrics(pid, process_name):
     '''
@@ -137,7 +156,7 @@ def get_process_metrics(pid, process_name):
     All the metrics can be scraped in the /proc/pid/stat file. However, here I uesed a third-party liberary "psutil" 
     to get all data I need.
     @pid: PID get by get_pid() function.
-    @return: return a list of all metrics I need.
+    @return: return a dict of all metrics I need.
     '''
     process_metrics = {}
     try:
@@ -161,40 +180,23 @@ def get_process_metrics(pid, process_name):
 def process_state(pid):
     # Linux
     state = 0
-    output = Popen(['ps aux | grep -i "' + pid + '" | grep -v grep'],
-                    stdout=PIPE,
-                    shell=True)
-    # close_fds=True)
-    result = output.stdout.readlines()
-    if len(result) >= 1:
-        state = 1
-    elif len(result) == 0:
-        logging.error('process {0} down, please check!'.format(pid))
-        state = 0
+    if pid:
+        output = Popen(['ps aux | grep -i "' + pid + '" | grep -v grep'],
+                        stdout=PIPE,
+                        shell=True)
+        result = output.stdout.readlines()
+        if len(result) >= 1:
+            state = 1
+        elif len(result) == 0:
+            logging.error('process {0} down, please check!'.format(pid))
+            state = 0
+        else:
+            pass
     else:
-        pass
-    print 'state = %s' % (state)
+        logging.warning('process {0} not available.'.format(pid))
+    logging.debug('process {0} state is {1}'.format(pid, state))
     return float(state)
 
-
-def _parse_stat_file(pid):
-    """Parse /proc/{pid}/stat file. Return a list of fields where
-    process name is in position 0.
-    Using "man proc" as a reference: where "man proc" refers to
-    position N, always substract 2 (e.g starttime pos 22 in
-    'man proc' == pos 20 in the list returned here).
-    The return value is cached in case oneshot() ctx manager is
-    in use.
-    """
-    with open("/proc/{0}/stat".format(pid), "rb") as f:
-        data = f.read()
-    # Process name is between parentheses. It can contain spaces and
-    # other parentheses. This is taken into account by looking for
-    # the first occurrence of "(" and the last occurence of ")".
-    rpar = data.rfind(b')')
-    name = data[data.find(b'(') + 1:rpar]
-    others = data[rpar + 2:].split()
-    return [name] + others
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -242,4 +244,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

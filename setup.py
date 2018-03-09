@@ -1,6 +1,7 @@
 import os, sys
 import prometheus_client
 import argparse
+import psutil
 from setuptools import setup, find_packages
 
 setup(
