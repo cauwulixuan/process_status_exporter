@@ -1,5 +1,5 @@
 #!/usr/bin/python
-#-*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
 
 import os
 import sys
@@ -19,8 +19,10 @@ logging.basicConfig(level=logging.INFO,
 
 logger = logging.getLogger(sys.path[0] + 'process_status_exporter')
 
+
 class ProcessStatusCollector(object):
     """collect process status"""
+
     def __init__(self):
         pass
 
@@ -31,35 +33,35 @@ class ProcessStatusCollector(object):
             print 'process_name = %s ' % (process_name)
             pid = get_pid(process_name)
             print 'PID = %s ' % (pid)
-            snake_case = re.sub('[-|\s]', r'_', process_name).lower()            
+            snake_case = re.sub('[-|\s]', r'_', process_name).lower()
 
             yield GaugeMetricFamily(snake_case + '_process_up',
-                                        snake_case + ' Process Up or Down (1 for up, 0 for down).',
-                                        value = process_state(pid))
+                                    snake_case + ' Process Up or Down (1 for up, 0 for down).',
+                                    value=process_state(pid))
 
             process_metrics = get_process_metrics(pid, process_name)
-            if process_metrics:                
+            if process_metrics:
                 yield GaugeMetricFamily(snake_case + '_running_time_seconds_total',
                                         snake_case + ' Total Running time in seconds.',
-                                        value = process_metrics['create_time'])
+                                        value=process_metrics['create_time'])
                 yield GaugeMetricFamily(snake_case + '_cpu_percentage',
                                         snake_case + ' CPU Percentage.',
-                                        value = process_metrics['cpu_percent'])
+                                        value=process_metrics['cpu_percent'])
                 yield GaugeMetricFamily(snake_case + '_opened_fds_number',
                                         snake_case + ' Total Number of Opened fds.',
-                                        value = process_metrics['num_fds'])
+                                        value=process_metrics['num_fds'])
                 yield GaugeMetricFamily(snake_case + '_threads_number',
                                         snake_case + ' Total Number of Threads.',
-                                        value = process_metrics['num_threads'])
+                                        value=process_metrics['num_threads'])
                 yield GaugeMetricFamily(snake_case + '_opened_files_number',
                                         snake_case + ' Total Number of opened files.',
-                                        value = process_metrics['open_files'])
-                
+                                        value=process_metrics['open_files'])
+
                 # OrderedDict([('read_count', 49566766), ('write_count', 29218473), ('read_bytes', 269357056), ('write_bytes', 4311138304), ('read_chars', 3803556911), ('write_chars', 7421457950)])
                 io_counter = GaugeMetricFamily(snake_case + '_io_counters',
                                                snake_case + ' IO counters.',
-                                               labels = ['type'])
-                
+                                               labels=['type'])
+
                 for key in process_metrics['io_counters'].keys():
                     io_counter.add_metric([key], process_metrics['io_counters'][key])
                 yield io_counter
@@ -67,21 +69,22 @@ class ProcessStatusCollector(object):
                 # pcputimes(user=10388.04, system=5887.69, children_user=0.0, children_system=0.0)
                 cpu_times = GaugeMetricFamily(snake_case + '_cpu_time_seconds_total',
                                               snake_case + ' Total CPU time in seconds.',
-                                              labels = ['mode'])
+                                              labels=['mode'])
                 for key in process_metrics['cpu_times'].keys():
                     cpu_times.add_metric([key], process_metrics['cpu_times'][key])
-                yield cpu_times                
+                yield cpu_times
 
                 # pfullmem(rss=29552640, vms=84586496, shared=12046336, text=11493376, lib=0, data=25661440, dirty=0, uss=30842880, pss=30842880, swap=0)
                 memory_info = GaugeMetricFamily(snake_case + '_memory_usage_bytes_total',
-                                               snake_case + ' Memory Usage by each mode.',
-                                               labels = ['mode'])
+                                                snake_case + ' Memory Usage by each mode.',
+                                                labels=['mode'])
                 for key in process_metrics['memory_info'].keys():
                     memory_info.add_metric([key], process_metrics['memory_info'][key])
                 yield memory_info
 
             else:
                 pass
+
 
 def get_process_name():
     # select process_name from process_info.txt
@@ -96,14 +99,15 @@ def get_process_name():
         logging.error("open files error, please check!")
         pass
 
+
 def get_pid(process_name):
     '''
-    This function is able to get PID by a given process name. Usually PID can be found in a .pid file 
+    This function is able to get PID by a given process name. Usually PID can be found in a .pid file
     located in /run/ directory, or in /run/service_dir/ directory. If no pid file exist in the directories
-    mentioned above, and if the program was setup by systemctl, PID can still be found in a cgroup.procs 
+    mentioned above, and if the program was setup by systemctl, PID can still be found in a cgroup.procs
     file, which usually located in /sys/fs/cgroup/systemd/system.slice/process_name.service/ directory.
 
-    @process_name: read process_name from process_info.txt file. 
+    @process_name: read process_name from process_info.txt file.
     @return: return a PID(string type) of the given process_name.
     '''
     if os.path.exists(r'/run/{0}/{0}.pid'.format(process_name)):
@@ -123,7 +127,8 @@ def get_pid(process_name):
             else:
                 return None
     elif os.path.exists(r'/sys/fs/cgroup/systemd/system.slice/{0}.service/cgroup.procs'.format(process_name)):
-        logging.info("no pid file in /run/ directory. .../{0}.service/cgroup.procs file exist, read PID.".format(process_name))
+        logging.info(
+            "no pid file in /run/ directory. .../{0}.service/cgroup.procs file exist, read PID.".format(process_name))
         with open("/sys/fs/cgroup/systemd/system.slice/{0}.service/cgroup.procs".format(process_name), "r") as f:
             data = f.readline().rstrip()
             if data:
@@ -138,6 +143,22 @@ def get_pid(process_name):
                 return data
             else:
                 return None
+    elif "mysqld" in process_name and os.path.exists(r'/run/mysqld/mysqld.pid'):
+        logging.info("/run/mysqld/mysqld.pid file exist, read PID.")
+        with open("/run/mysqld/mysqld.pid", "r") as f:
+            data = f.readline().rstrip()
+            if data:
+                return data
+            else:
+                return None
+    elif "mysql" in process_name and os.path.exists(r'/run/mysql/mysql.pid'):
+        logging.info("/run/mysql/mysql.pid file exist, read PID.")
+        with open("/run/mysql/mysql.pid", "r") as f:
+            data = f.readline().rstrip()
+            if data:
+                return data
+            else:
+                return None
     elif "knox-server" in process_name and os.path.exists(r'/run/knox/gateway.pid'):
         logging.info("/run/knox/gateway.pid file exist, read PID.")
         with open("/run/knox/gateway.pid", "r") as f:
@@ -147,13 +168,15 @@ def get_pid(process_name):
             else:
                 return None
     else:
-        logging.error("Cann't find {0} PID file, error happened, please check why PID file not exist.".format(process_name))
+        logging.error(
+            "Cann't find {0} PID file, error happened, please check why PID file not exist.".format(process_name))
         return None
+
 
 def get_process_metrics(pid, process_name):
     '''
     This function is setup to scrape process metrics, such as CPU, Mem, uptime, status and so on.
-    All the metrics can be scraped in the /proc/pid/stat file. However, here I uesed a third-party liberary "psutil" 
+    All the metrics can be scraped in the /proc/pid/stat file. However, here I uesed a third-party liberary "psutil"
     to get all data I need.
     @pid: PID get by get_pid() function.
     @return: return a dict of all metrics I need.
@@ -162,14 +185,14 @@ def get_process_metrics(pid, process_name):
     try:
         process = psutil.Process(int(pid))
         process_metrics = {
-            "create_time" : process.create_time(),
-            "io_counters" : process.io_counters()._asdict(),
-            "cpu_times" : process.cpu_times()._asdict(),
-            "cpu_percent" : process.cpu_percent(),
-            "memory_info" : process.memory_full_info()._asdict(),
-            "num_fds" : process.num_fds(),
-            "num_threads" : process.num_threads(),
-            "open_files" : len(process.open_files())
+            "create_time": process.create_time(),
+            "io_counters": process.io_counters()._asdict(),
+            "cpu_times": process.cpu_times()._asdict(),
+            "cpu_percent": process.cpu_percent(),
+            "memory_info": process.memory_full_info()._asdict(),
+            "num_fds": process.num_fds(),
+            "num_threads": process.num_threads(),
+            "open_files": len(process.open_files())
         }
     except:
         logging.error("No pid {0} found, please check ! ".format(process_name))
@@ -182,8 +205,8 @@ def process_state(pid):
     state = 0
     if pid:
         output = Popen(['ps aux | grep -i "' + pid + '" | grep -v grep'],
-                        stdout=PIPE,
-                        shell=True)
+                       stdout=PIPE,
+                       shell=True)
         result = output.stdout.readlines()
         if len(result) >= 1:
             state = 1
@@ -241,6 +264,7 @@ def main():
     except KeyboardInterrupt:
         print "Interrupted"
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()
