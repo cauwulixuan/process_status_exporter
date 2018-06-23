@@ -3,6 +3,7 @@ A prometheus exporter to scrape process status including CPU, Memory, Create tim
 
 Usage:
 python process_status_exporter.py process_info.txt
+You can simply change the process_info.txt file to add or remove the process name you want to monitor.
 
 after register in Prometheus server, results in url (http://hostname:9108/metrics) are as blow:
 ```
