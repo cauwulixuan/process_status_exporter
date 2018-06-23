@@ -4,7 +4,7 @@ A prometheus exporter to scrape process status including CPU, Memory, Create tim
 Usage:
 python process_status_exporter.py process_info.txt
 
-after register in Prometheus server, results in url=http://hostname:9108/metrics are as blow:
+after register in Prometheus server, results in url (http://hostname:9108/metrics) are as blow:
 ```
 # HELP process_virtual_memory_bytes Virtual memory size in bytes.
 # TYPE process_virtual_memory_bytes gauge
